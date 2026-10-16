@@ -1,0 +1,54 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+set_and_check(@PROJECT_NAME@_INC_DIR @PACKAGE_INC_DIR@)
+set_and_check(@PROJECT_NAME@_LC_INCLUDE_DIR @PACKAGE_LC_INCLUDE_DIR@)
+set_and_check(@PROJECT_NAME@_LIB_DIR @PACKAGE_LIB_DIR@)
+set_and_check(@PROJECT_NAME@_BIN_DIR @PACKAGE_BIN_DIR@)
+set(_NAME_ @PROJECT_NAME@)
+
+find_dependency(PkgConfig)
+find_dependency(peel)
+find_dependency(Eigen3)
+pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4)
+
+get_target_property(EIGEN_INC_DIRS Eigen3::Eigen INTERFACE_INCLUDE_DIRECTORIES)
+include_directories(${EIGEN_INC_DIRS})
+peel_generate(Gtk 4.0 RECURSIVE)
+
+# Get the include directories for LibreCad
+file(
+  GLOB LC_DIRS CONFIGURE_DEPENDS
+  LIST_DIRECTORIES true
+  RELATIVE "${${_NAME_}_LC_INCLUDE_DIR}"
+  "${${_NAME_}_LC_INCLUDE_DIR}/*")
+
+# Set the include directories for LibreCad
+set(INC_DIRS "${${_NAME_}_INC_DIR}")
+foreach(dir IN LISTS LC_DIRS)
+  if(IS_DIRECTORY "${${_NAME_}_LC_INCLUDE_DIR}/${dir}")
+    list(APPEND INC_DIRS "${${_NAME_}_LC_INCLUDE_DIR}/${dir}")
+  endif()
+endforeach()
+
+set(TARGET_PROPS)
+if(WIN32)
+  set(LIB_SHARED
+      "${${_NAME_}_BIN_DIR}/lib${_NAME_}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+  set(LIB_IMP "${LIB_LOC}/lib${_NAME_}${CMAKE_SHARED_LIBRARY_SUFFIX}.a")
+  list(APPEND TARGET_PROPS IMPORTED_IMPLIB "${LIB_IMP}")
+else()
+  set(LIB_SHARED
+      "${${_NAME_}_LIB_DIR}/lib${_NAME_}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+endif()
+
+message(STATUS ${INC_DIRS})
+
+add_library(@PROJECT_NAME@ SHARED IMPORTED)
+set_target_properties(
+  @PROJECT_NAME@
+  PROPERTIES IMPORTED_LOCATION "${LIB_SHARED}"
+             INTERFACE_INCLUDE_DIRECTORIES "${INC_DIRS}"
+             ${TARGET_PROPS})
+
+check_required_components(@PROJECT_NAME@)
